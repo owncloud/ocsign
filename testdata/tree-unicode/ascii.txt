@@ -1,0 +1,1 @@
+plain ascii, sorts before multibyte lead bytes
