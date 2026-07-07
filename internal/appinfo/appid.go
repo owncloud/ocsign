@@ -11,8 +11,10 @@ import (
 	"regexp"
 )
 
-// appIDPattern is the canonical appId / leaf-CN form (§7).
-var appIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{1,63}$`)
+// appIDPattern is the canonical appId / leaf-CN form (§7, design §4.1):
+// lowercase ASCII letters, digits, underscore, hyphen, dot; must start with a
+// letter; 3–64 characters total.
+var appIDPattern = regexp.MustCompile(`^[a-z][a-z0-9_.-]{2,63}$`)
 
 // AppID reads appinfo/info.xml under root, extracts the <id>, ASCII case-folds it
 // (A–Z → a–z, the 26 ASCII bytes only — never locale/Unicode lowercasing), and

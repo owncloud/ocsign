@@ -8,8 +8,8 @@ import (
 	"github.com/DeepDiver1975/ocsign/internal/appinfo"
 )
 
-// TestAppID reads the id from info.xml and canonicalizes it per verifier §7:
-// ASCII-only case-fold, then validate ^[a-z][a-z0-9_-]{1,63}$.
+// TestAppID reads the id from info.xml and canonicalizes it per verifier §7 /
+// design §4.1: ASCII-only case-fold, then validate ^[a-z][a-z0-9_.-]{2,63}$.
 func TestAppID(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -28,13 +28,33 @@ func TestAppID(t *testing.T) {
 			want: "example_app",
 		},
 		{
+			name: "dot is allowed",
+			xml:  `<info><id>example.app</id></info>`,
+			want: "example.app",
+		},
+		{
+			name: "minimum length three accepted",
+			xml:  `<info><id>abc</id></info>`,
+			want: "abc",
+		},
+		{
 			name:    "invalid characters rejected",
 			xml:     `<info><id>bad id!</id></info>`,
 			wantErr: true,
 		},
 		{
-			name:    "too short rejected",
+			name:    "single character rejected",
 			xml:     `<info><id>a</id></info>`,
+			wantErr: true,
+		},
+		{
+			name:    "two characters rejected (min length is three)",
+			xml:     `<info><id>ab</id></info>`,
+			wantErr: true,
+		},
+		{
+			name:    "leading dot rejected (must start with a letter)",
+			xml:     `<info><id>.app</id></info>`,
 			wantErr: true,
 		},
 		{
@@ -77,10 +97,16 @@ func TestValidateCN(t *testing.T) {
 	if err := appinfo.ValidateCN("example-app"); err != nil {
 		t.Errorf("valid CN rejected: %v", err)
 	}
+	if err := appinfo.ValidateCN("example.app"); err != nil {
+		t.Errorf("dotted CN rejected: %v", err)
+	}
 	if err := appinfo.ValidateCN("Example-App"); err == nil {
 		t.Error("uppercase CN must be rejected (no normalization)")
 	}
 	if err := appinfo.ValidateCN("x"); err == nil {
 		t.Error("too-short CN must be rejected")
+	}
+	if err := appinfo.ValidateCN("ab"); err == nil {
+		t.Error("two-character CN must be rejected (min length is three)")
 	}
 }
