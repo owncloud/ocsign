@@ -1,0 +1,7 @@
+# Signing is byte-exact: test fixtures and golden vectors must be checked out
+# verbatim on every platform. Treat them as binary so git never converts line
+# endings (CRLF on Windows would change file bytes, hashes, and M).
+testdata/** -text
+
+# Shell scripts must keep LF endings on all platforms.
+*.sh text eol=lf

@@ -68,7 +68,8 @@ func hashFile(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	// Read-only handle: a Close error cannot affect the computed digest.
+	defer func() { _ = f.Close() }()
 
 	h := sha512.New()
 	if _, err := io.Copy(h, f); err != nil {
