@@ -1,11 +1,14 @@
 // Command ocsign produces a canonical, signed signature.json (schema v2) for an
-// ownCloud app, decoupled from the server.
+// ownCloud app, decoupled from the server. See the package docs in internal/cli
+// for the command-line contract and exit codes.
 package main
 
-import "fmt"
+import (
+	"os"
+
+	"github.com/DeepDiver1975/ocsign/internal/cli"
+)
 
 func main() {
-	// The CLI is implemented in a later change (internal/cli). This scaffold
-	// exists so the module builds and CI has something to compile and test.
-	fmt.Println("ocsign: not yet implemented")
+	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr))
 }
