@@ -10,6 +10,14 @@ linters:
     - unused
     - misspell
     - revive
+  settings:
+    errcheck:
+      # Writes to the injected stdout/stderr io.Writer are diagnostics; a failed
+      # write to the console is not actionable and not worth threading an error.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintln
+        - fmt.Fprintf
 
 formatters:
   enable:
