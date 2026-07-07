@@ -50,7 +50,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		return exitUsage
 	}
 
-	if err := run(opts, stdout, stderr); err != nil {
+	if err := run(opts, stdout); err != nil {
 		var ce codedError
 		if errors.As(err, &ce) {
 			fmt.Fprintln(stderr, "error:", ce.err)
@@ -108,7 +108,7 @@ func (c codedError) Unwrap() error { return c.err }
 
 func coded(code int, err error) error { return codedError{code: code, err: err} }
 
-func run(opts *options, stdout, stderr io.Writer) error {
+func run(opts *options, stdout io.Writer) error {
 	if opts.core {
 		return coded(exitUsage, errors.New(
 			"--core (core signing) is not yet implemented: the .htaccess/.user.ini "+
