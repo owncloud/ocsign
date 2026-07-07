@@ -16,6 +16,7 @@ import (
 	"github.com/DeepDiver1975/ocsign/internal/manifest"
 	"github.com/DeepDiver1975/ocsign/internal/sign"
 	"github.com/DeepDiver1975/ocsign/internal/signature"
+	"github.com/DeepDiver1975/ocsign/internal/version"
 )
 
 // Exit codes (spec §2).
@@ -27,15 +28,16 @@ const (
 )
 
 type options struct {
-	path      string
-	key       string
-	cert      string
-	chain     string
-	core      bool
-	attest    bool
-	attestURL string
-	out       string
-	dryRun    bool
+	path        string
+	key         string
+	cert        string
+	chain       string
+	core        bool
+	attest      bool
+	attestURL   string
+	out         string
+	dryRun      bool
+	showVersion bool
 }
 
 // Run parses args (excluding the program name), executes the signing flow, and
@@ -48,6 +50,11 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stderr, "error:", err)
 		return exitUsage
+	}
+
+	if opts.showVersion {
+		fmt.Fprintf(stdout, "ocsign %s\n", version.Version)
+		return exitOK
 	}
 
 	if err := run(opts, stdout); err != nil {
@@ -76,9 +83,15 @@ func parseFlags(args []string, stderr io.Writer) (*options, error) {
 	fs.StringVar(&opts.attestURL, "attest-repo", "", "owner/repo of the attestation workflow")
 	fs.StringVar(&opts.out, "out", "", "override output path for signature.json")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "compute and print; write nothing")
+	fs.BoolVar(&opts.showVersion, "version", false, "print the ocsign version and exit")
 
 	if err := fs.Parse(args); err != nil {
 		return nil, err
+	}
+
+	// --version is informational and needs none of the signing flags.
+	if opts.showVersion {
+		return opts, nil
 	}
 
 	var missing []string

@@ -72,6 +72,18 @@ go build ./cmd/ocsign
 `ocsign` uses only the Go standard library for cryptography and supports
 `GOOS`/`GOARCH` cross-compilation for linux/darwin/windows on amd64/arm64.
 
+`ocsign --version` prints the build version.
+
+## Releases
+
+Pushing a `v*` tag runs the release workflow, which cross-compiles all six
+OS/arch targets, produces checksummed archives (`SHA256SUMS`), and publishes a
+GitHub Release. To reproduce the artifacts locally:
+
+```sh
+scripts/build-release.sh v0.1.0 dist
+```
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
