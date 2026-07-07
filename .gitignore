@@ -1,0 +1,14 @@
+# Build output
+/dist/
+/ocsign
+/ocsign.exe
+
+# Go
+*.test
+*.out
+coverage.txt
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store

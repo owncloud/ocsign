@@ -1,0 +1,77 @@
+# ocsign
+
+A standalone, cross-platform Go CLI that produces a `signature.json` (schema v2)
+for an ownCloud app. It is **decoupled from the server** — unlike the legacy
+`occ integrity:sign-app`, it needs no bootstrapped ownCloud instance.
+
+`ocsign` does three things:
+
+1. Walks an app tree and builds the **canonical file-hash manifest**.
+2. Signs the canonical manifest bytes with the developer's private key and writes
+   `appinfo/signature.json` with the embedded leaf certificate and chain.
+3. *(Planned)* Optionally attaches a Mode-2 attestation token (`--attest`).
+
+The manifest `ocsign` signs is **byte-identical** to what the ownCloud core
+verifier recomputes. The canonicalization rules and the golden test vectors under
+`testdata/` are the shared conformance artifact for both implementations.
+
+## Status
+
+This is an early implementation. **Only Mode-1 app signing is implemented today.**
+
+- `--core` (signing the core server root) is **not yet implemented**. It depends
+  on the exact `.htaccess` / `.user.ini` normalization rules that must be
+  transcribed verbatim from the legacy PHP `Checker`.
+- `--attest` (Mode-2 attestation) is **not yet implemented**. It depends on the
+  not-yet-finalized `bind(H, T)` token byte layout and the attestation-workflow
+  result-delivery mechanism.
+
+Both flags currently exit with a clear "not yet implemented" error.
+
+## Usage
+
+```
+ocsign [flags]
+
+Required:
+  --path string     Path to the app root directory to sign (the directory whose
+                    appinfo/info.xml declares the app id).
+  --key  string     Path to the signer's PEM private key (EC P-384, or RSA-4096
+                    fallback). Never transmitted; used locally only.
+  --cert string     Path to the issued leaf certificate (PEM).
+
+Optional:
+  --chain string    Path to a PEM file with the intermediate cert(s) to embed as
+                    certificates.chain[]. If omitted, chain[] is left empty.
+  --out  string     Override output path (default: <path>/appinfo/signature.json).
+  --dry-run         Compute and print the manifest + would-be signature.json to
+                    stdout; write nothing.
+
+Exit codes:
+  0  success
+  1  usage / input error (missing flag, unreadable key/cert/path)
+  2  signing error (key/cert mismatch, unsupported key type)
+  3  attestation error (--attest requested but workflow failed)
+```
+
+### Example
+
+```sh
+ocsign --path ./example-app \
+       --key  developer.key \
+       --cert leaf.crt \
+       --chain intermediate.crt
+```
+
+## Building
+
+```sh
+go build ./cmd/ocsign
+```
+
+`ocsign` uses only the Go standard library for cryptography and supports
+`GOOS`/`GOARCH` cross-compilation for linux/darwin/windows on amd64/arm64.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
