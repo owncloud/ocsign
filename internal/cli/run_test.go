@@ -172,6 +172,18 @@ func TestCNMismatch(t *testing.T) {
 	}
 }
 
+// TestVersionFlag prints the build version and exits 0 without requiring the
+// signing flags.
+func TestVersionFlag(t *testing.T) {
+	code, stdout, stderr := run(t, "--version")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0; stderr: %s", code, stderr)
+	}
+	if !bytes.Contains([]byte(stdout), []byte("ocsign")) {
+		t.Errorf("--version output should mention ocsign, got %q", stdout)
+	}
+}
+
 // TestCoreNotImplemented: --core exits with a clear error (scope).
 func TestCoreNotImplemented(t *testing.T) {
 	tree := copyTree(t, "tree-basic")
