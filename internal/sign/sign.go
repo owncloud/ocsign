@@ -22,7 +22,9 @@ const (
 // and the base64 (standard, padded) signature (spec §4).
 //
 //   - EC P-384: ECDSA over SHA-384(m), ASN.1 DER (ecdsa.SignASN1).
-//   - RSA-4096: RSA-PSS over SHA-384(m), MGF1-SHA384, salt length = hash length.
+//   - RSA (2048 or 4096): RSA-PSS over SHA-384(m), MGF1-SHA384, salt length =
+//     hash length. RSA-4096 is the recommended size; RSA-2048 is accepted for
+//     compatibility with legacy ownCloud app signing keys.
 //
 // SHA-1 is never used. Any other key type is rejected.
 func Sign(key crypto.Signer, m []byte) (alg string, signature string, err error) {
@@ -40,8 +42,8 @@ func Sign(key crypto.Signer, m []byte) (alg string, signature string, err error)
 		return AlgECDSAP384SHA384, base64.StdEncoding.EncodeToString(der), nil
 
 	case *rsa.PrivateKey:
-		if bits := k.N.BitLen(); bits != 4096 {
-			return "", "", fmt.Errorf("%w: RSA-%d (only RSA-4096 supported)", ErrUnsupportedKeyType, bits)
+		if bits := k.N.BitLen(); bits != 2048 && bits != 4096 {
+			return "", "", fmt.Errorf("%w: RSA-%d (only RSA-2048 or RSA-4096 supported)", ErrUnsupportedKeyType, bits)
 		}
 		opts := &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash, Hash: crypto.SHA384}
 		sig, err := rsa.SignPSS(rand.Reader, k, crypto.SHA384, digest[:], opts)
