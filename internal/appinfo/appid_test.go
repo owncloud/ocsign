@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/DeepDiver1975/ocsign/internal/appinfo"
+	"github.com/owncloud/ocsign/internal/appinfo"
 )
 
 // TestAppID reads the id from info.xml and canonicalizes it per verifier §7 /

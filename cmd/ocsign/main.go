@@ -6,7 +6,7 @@ package main
 import (
 	"os"
 
-	"github.com/DeepDiver1975/ocsign/internal/cli"
+	"github.com/owncloud/ocsign/internal/cli"
 )
 
 func main() {

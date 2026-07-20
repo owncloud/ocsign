@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/DeepDiver1975/ocsign/internal/keys"
-	"github.com/DeepDiver1975/ocsign/internal/sign"
+	"github.com/owncloud/ocsign/internal/keys"
+	"github.com/owncloud/ocsign/internal/sign"
 )
 
 // TestOpenSSLCrossCheck verifies that a signature ocsign produces is accepted by

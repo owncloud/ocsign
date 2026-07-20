@@ -10,7 +10,7 @@ set -euo pipefail
 
 version="${1:?usage: build-release.sh <version> [out-dir]}"
 outdir="${2:-dist}"
-pkg="github.com/DeepDiver1975/ocsign/internal/version"
+pkg="github.com/owncloud/ocsign/internal/version"
 
 rm -rf "$outdir"
 mkdir -p "$outdir"

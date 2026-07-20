@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/DeepDiver1975/ocsign/internal/keys"
+	"github.com/owncloud/ocsign/internal/keys"
 )
 
 func keyPath(t *testing.T, name string) string {

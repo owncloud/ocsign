@@ -11,12 +11,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/DeepDiver1975/ocsign/internal/appinfo"
-	"github.com/DeepDiver1975/ocsign/internal/keys"
-	"github.com/DeepDiver1975/ocsign/internal/manifest"
-	"github.com/DeepDiver1975/ocsign/internal/sign"
-	"github.com/DeepDiver1975/ocsign/internal/signature"
-	"github.com/DeepDiver1975/ocsign/internal/version"
+	"github.com/owncloud/ocsign/internal/appinfo"
+	"github.com/owncloud/ocsign/internal/keys"
+	"github.com/owncloud/ocsign/internal/manifest"
+	"github.com/owncloud/ocsign/internal/sign"
+	"github.com/owncloud/ocsign/internal/signature"
+	"github.com/owncloud/ocsign/internal/version"
 )
 
 // Exit codes (spec §2).

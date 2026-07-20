@@ -1,3 +1,3 @@
-module github.com/DeepDiver1975/ocsign
+module github.com/owncloud/ocsign
 
 go 1.26
