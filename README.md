@@ -37,7 +37,7 @@ Required:
   --path string     Path to the app root directory to sign (the directory whose
                     appinfo/info.xml declares the app id).
   --key  string     Path to the signer's PEM private key (EC P-384, or RSA-4096
-                    fallback). Never transmitted; used locally only.
+                    / RSA-2048 fallback). Never transmitted; used locally only.
   --cert string     Path to the issued leaf certificate (PEM).
 
 Optional:

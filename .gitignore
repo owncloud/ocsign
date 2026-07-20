@@ -12,3 +12,6 @@ coverage.txt
 .idea/
 .vscode/
 .DS_Store
+
+# Local-only test that uses real, uncommittable ownCloud signing key material
+/internal/cli/calendar_local_test.go
