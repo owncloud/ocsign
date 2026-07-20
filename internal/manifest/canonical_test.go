@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/DeepDiver1975/ocsign/internal/manifest"
+	"github.com/owncloud/ocsign/internal/manifest"
 )
 
 // allTrees are the golden-vector fixtures whose committed manifest.canonical.json

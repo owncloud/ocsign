@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/DeepDiver1975/ocsign/internal/signature"
+	"github.com/owncloud/ocsign/internal/signature"
 )
 
 var (
