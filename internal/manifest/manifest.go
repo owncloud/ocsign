@@ -9,6 +9,19 @@ package manifest
 
 import "sort"
 
+// Mode selects the canonicalization rules Build applies. App mode signs a
+// third-party app tree; core mode signs the ownCloud server root and carries the
+// historical special cases (spec §3.6): extra exclusions and .htaccess
+// normalization, matching the legacy verifier byte-for-byte.
+type Mode int
+
+// Build modes: ModeApp signs a third-party app tree; ModeCore signs the core
+// server root with the §3.6 special cases.
+const (
+	ModeApp  Mode = iota // appinfo/signature.json + OS-cruft exclusions (§3.2)
+	ModeCore             // core exclusions + root .htaccess normalization (§3.6)
+)
+
 // Manifest is a set of manifest-key -> lowercase-hex-SHA-512 entries.
 type Manifest struct {
 	hashes map[string]string

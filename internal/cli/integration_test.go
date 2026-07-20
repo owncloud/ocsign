@@ -72,8 +72,57 @@ func TestSignAndVerifyWithOpenSSL(t *testing.T) {
 			// The stored hashes (M) must match a manifest recomputed from the
 			// signed tree — the signature is meaningless if the tree it covers
 			// drifted from what was recorded.
-			assertManifestMatches(t, tree, env.Hashes)
+			assertManifestMatches(t, tree, manifest.ModeApp, env.Hashes)
 
+			verifyWithOpenSSL(t, openssl, env, tc.rsaPSS)
+		})
+	}
+}
+
+// TestSignAndVerifyCoreWithOpenSSL is the core-mode counterpart of the app-mode
+// round trip: sign tree-core with a CN=core leaf, confirm the stored manifest
+// matches a freshly recomputed core-mode manifest, and verify the signature with
+// the OpenSSL CLI (mirroring the external ownCloud core verifier).
+func TestSignAndVerifyCoreWithOpenSSL(t *testing.T) {
+	openssl, err := exec.LookPath("openssl")
+	if err != nil {
+		t.Skip("openssl CLI not available; skipping core sign+verify round trip")
+	}
+
+	cases := []struct {
+		name     string
+		keyFile  string
+		certFile string
+		wantAlg  string
+		rsaPSS   bool
+	}{
+		{name: "ec-p384", keyFile: "ec-leaf.key", certFile: "ec-core-leaf.crt", wantAlg: "ecdsa-p384-sha384"},
+		{name: "rsa-4096", keyFile: "rsa-leaf.key", certFile: "rsa-core-leaf.crt", wantAlg: "rsa-pss-sha384", rsaPSS: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tree := copyTree(t, "tree-core")
+
+			code, _, stderr := run(t,
+				"--path", tree,
+				"--key", key(t, tc.keyFile),
+				"--cert", key(t, tc.certFile),
+				"--core",
+			)
+			if code != 0 {
+				t.Fatalf("sign exit = %d, want 0; stderr: %s", code, stderr)
+			}
+
+			env := readEnvelope(t, filepath.Join(tree, "core", "signature.json"))
+			if env.V != 2 {
+				t.Errorf("v = %d, want 2", env.V)
+			}
+			if env.Alg != tc.wantAlg {
+				t.Errorf("alg = %q, want %q", env.Alg, tc.wantAlg)
+			}
+
+			assertManifestMatches(t, tree, manifest.ModeCore, env.Hashes)
 			verifyWithOpenSSL(t, openssl, env, tc.rsaPSS)
 		})
 	}
@@ -97,9 +146,9 @@ func readEnvelope(t *testing.T, path string) envelope {
 // checks they equal want (the hashes stored in the envelope). Build excludes
 // appinfo/signature.json, so the freshly written signature does not perturb the
 // recomputation.
-func assertManifestMatches(t *testing.T, tree string, want []byte) {
+func assertManifestMatches(t *testing.T, tree string, mode manifest.Mode, want []byte) {
 	t.Helper()
-	m, err := manifest.Build(tree)
+	m, err := manifest.Build(tree, mode)
 	if err != nil {
 		t.Fatalf("recompute manifest: %v", err)
 	}

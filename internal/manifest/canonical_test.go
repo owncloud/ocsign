@@ -45,7 +45,7 @@ func TestCanonicalMatchesGolden(t *testing.T) {
 				t.Fatalf("read golden: %v", err)
 			}
 
-			m, err := manifest.Build(root)
+			m, err := manifest.Build(root, manifest.ModeApp)
 			if err != nil {
 				t.Fatalf("Build: %v", err)
 			}
@@ -62,7 +62,7 @@ func TestCanonicalMatchesGolden(t *testing.T) {
 // core-only) is.
 func TestCruftExcluded(t *testing.T) {
 	root := treePath(t, "tree-cruft")
-	m, err := manifest.Build(root)
+	m, err := manifest.Build(root, manifest.ModeApp)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestSignatureFileExcluded(t *testing.T) {
 	writeFile(t, root, "appinfo/signature.json", `{"v":2}`)
 	writeFile(t, root, "js/app.js", "x")
 
-	m, err := manifest.Build(root)
+	m, err := manifest.Build(root, manifest.ModeApp)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestSignatureFileExcluded(t *testing.T) {
 // TestByteOrdering pins the '.' (0x2E) < '/' (0x2F) ordering (spec §3.5, tree-edge).
 func TestByteOrdering(t *testing.T) {
 	root := treePath(t, "tree-edge")
-	m, err := manifest.Build(root)
+	m, err := manifest.Build(root, manifest.ModeApp)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestPathSeparatorNormalized(t *testing.T) {
 	writeFile(t, root, "appinfo/info.xml", "<info><id>example-app</id></info>")
 	writeFile(t, root, filepath.Join("lib", "Controller", "Page.php"), "<?php")
 
-	m, err := manifest.Build(root)
+	m, err := manifest.Build(root, manifest.ModeApp)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestEmptyFileHashed(t *testing.T) {
 	const emptySHA512 = "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce" +
 		"47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e"
 	root := treePath(t, "tree-edge")
-	m, err := manifest.Build(root)
+	m, err := manifest.Build(root, manifest.ModeApp)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
