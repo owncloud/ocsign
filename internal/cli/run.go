@@ -78,7 +78,7 @@ func parseFlags(args []string, stderr io.Writer) (*options, error) {
 	fs.StringVar(&opts.key, "key", "", "path to the signer's PEM private key (required)")
 	fs.StringVar(&opts.cert, "cert", "", "path to the issued leaf certificate PEM (required)")
 	fs.StringVar(&opts.chain, "chain", "", "path to a PEM file with intermediate cert(s) to embed")
-	fs.BoolVar(&opts.core, "core", false, "sign as core (not yet implemented)")
+	fs.BoolVar(&opts.core, "core", false, `sign the core server root (leaf CN must be "core"); writes core/signature.json`)
 	fs.BoolVar(&opts.attest, "attest", false, "attach a Mode-2 attestation token (not yet implemented)")
 	fs.StringVar(&opts.attestURL, "attest-repo", "", "owner/repo of the attestation workflow")
 	fs.StringVar(&opts.out, "out", "", "override output path for signature.json")
@@ -121,11 +121,15 @@ func (c codedError) Unwrap() error { return c.err }
 
 func coded(code int, err error) error { return codedError{code: code, err: err} }
 
+// coreIdentity is the reserved leaf-CN that authorizes signing the core server
+// root (spec-core-verifier §7). Core has no appinfo/info.xml app id, so the CN
+// is compared to this literal rather than derived and validated as an appId.
+const coreIdentity = "core"
+
 func run(opts *options, stdout io.Writer) error {
+	mode := manifest.ModeApp
 	if opts.core {
-		return coded(exitUsage, errors.New(
-			"--core (core signing) is not yet implemented: the .htaccess/.user.ini "+
-				"normalization rules must be transcribed from the legacy verifier first"))
+		mode = manifest.ModeCore
 	}
 
 	// Validate the app path up front so a bad --path is a clean input error.
@@ -150,16 +154,24 @@ func run(opts *options, stdout io.Writer) error {
 	if !keys.PublicKeyMatches(key, cert) {
 		return coded(exitSigning, errors.New("--key public key does not match --cert subject public key"))
 	}
-	appID, err := appinfo.AppID(opts.path)
-	if err != nil {
-		return coded(exitSigning, err)
-	}
-	if err := appinfo.ValidateCN(cert.Subject.CommonName); err != nil {
-		return coded(exitSigning, err)
-	}
-	if cert.Subject.CommonName != appID {
-		return coded(exitSigning, fmt.Errorf(
-			"cert CN %q does not match app id %q", cert.Subject.CommonName, appID))
+	if opts.core {
+		// Core has no app id; the leaf must carry the reserved core identity.
+		if cert.Subject.CommonName != coreIdentity {
+			return coded(exitSigning, fmt.Errorf(
+				"cert CN %q does not match reserved core identity %q", cert.Subject.CommonName, coreIdentity))
+		}
+	} else {
+		appID, err := appinfo.AppID(opts.path)
+		if err != nil {
+			return coded(exitSigning, err)
+		}
+		if err := appinfo.ValidateCN(cert.Subject.CommonName); err != nil {
+			return coded(exitSigning, err)
+		}
+		if cert.Subject.CommonName != appID {
+			return coded(exitSigning, fmt.Errorf(
+				"cert CN %q does not match app id %q", cert.Subject.CommonName, appID))
+		}
 	}
 
 	var chain []string
@@ -172,7 +184,7 @@ func run(opts *options, stdout io.Writer) error {
 	}
 
 	// Build the canonical manifest bytes M and sign them (§3, §4).
-	m, err := manifest.Build(opts.path)
+	m, err := manifest.Build(opts.path, mode)
 	if err != nil {
 		return coded(exitUsage, fmt.Errorf("build manifest: %w", err))
 	}
@@ -212,7 +224,11 @@ func run(opts *options, stdout io.Writer) error {
 
 	outPath := opts.out
 	if outPath == "" {
-		outPath = filepath.Join(opts.path, "appinfo", "signature.json")
+		if opts.core {
+			outPath = filepath.Join(opts.path, "core", "signature.json")
+		} else {
+			outPath = filepath.Join(opts.path, "appinfo", "signature.json")
+		}
 	}
 	if err := os.WriteFile(outPath, out, 0o644); err != nil {
 		return coded(exitUsage, fmt.Errorf("write %s: %w", outPath, err))

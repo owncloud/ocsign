@@ -184,20 +184,109 @@ func TestVersionFlag(t *testing.T) {
 	}
 }
 
-// TestCoreNotImplemented: --core exits with a clear error (scope).
-func TestCoreNotImplemented(t *testing.T) {
-	tree := copyTree(t, "tree-basic")
+// TestSignCore signs tree-core with a CN=core leaf and writes a valid
+// core/signature.json whose hashes equal the committed core golden M (§3.6).
+func TestSignCore(t *testing.T) {
+	tree := copyTree(t, "tree-core")
 	code, _, stderr := run(t,
 		"--path", tree,
 		"--key", key(t, "ec-leaf.key"),
-		"--cert", key(t, "ec-leaf.crt"),
+		"--cert", key(t, "ec-core-leaf.crt"),
+		"--chain", key(t, "ec-intermediate.crt"),
 		"--core",
 	)
-	if code == 0 {
-		t.Error("--core should not succeed yet")
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0; stderr: %s", code, stderr)
+	}
+
+	out := filepath.Join(tree, "core", "signature.json")
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read core/signature.json: %v", err)
+	}
+	var env struct {
+		V      int             `json:"v"`
+		Alg    string          `json:"alg"`
+		Hashes json.RawMessage `json:"hashes"`
+	}
+	if err := json.Unmarshal(data, &env); err != nil {
+		t.Fatalf("signature.json invalid: %v", err)
+	}
+	if env.V != 2 || env.Alg != "ecdsa-p384-sha384" {
+		t.Errorf("v=%d alg=%q", env.V, env.Alg)
+	}
+
+	want, err := os.ReadFile(filepath.Join(fixture(t, "golden"), "tree-core", "manifest.canonical.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(env.Hashes, want) {
+		t.Errorf("hashes != core canonical M\n got: %s\nwant: %s", env.Hashes, want)
+	}
+
+	// The default core output is core/signature.json, never appinfo/.
+	if _, err := os.Stat(filepath.Join(tree, "appinfo", "signature.json")); !os.IsNotExist(err) {
+		t.Error("--core must not write appinfo/signature.json")
+	}
+}
+
+// TestCoreCNMismatch: --core with an app-CN leaf (CN=example-app) is a signing
+// error -> exit 2. Core requires the reserved CN "core".
+func TestCoreCNMismatch(t *testing.T) {
+	tree := copyTree(t, "tree-core")
+	code, _, _ := run(t,
+		"--path", tree,
+		"--key", key(t, "ec-leaf.key"),
+		"--cert", key(t, "ec-leaf.crt"), // CN=example-app, not "core"
+		"--core",
+	)
+	if code != 2 {
+		t.Errorf("exit = %d, want 2", code)
+	}
+}
+
+// TestCoreDryRun prints to stdout and leaves no core/signature.json (§2).
+func TestCoreDryRun(t *testing.T) {
+	tree := copyTree(t, "tree-core")
+	code, stdout, stderr := run(t,
+		"--path", tree,
+		"--key", key(t, "ec-leaf.key"),
+		"--cert", key(t, "ec-core-leaf.crt"),
+		"--core",
+		"--dry-run",
+	)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0; stderr: %s", code, stderr)
+	}
+	if len(stdout) == 0 {
+		t.Error("dry-run should print to stdout")
+	}
+	// tree-core ships a core/signature.json stub (exercised by the exclusion
+	// test); dry-run must leave it byte-for-byte untouched, not overwrite it.
+	got, err := os.ReadFile(filepath.Join(tree, "core", "signature.json"))
+	if err != nil {
+		t.Fatalf("read core/signature.json: %v", err)
+	}
+	if string(got) != `{"v":2}`+"\n" {
+		t.Errorf("dry-run must not write core/signature.json; got %q", got)
+	}
+}
+
+// TestCoreAttestStillRefused: --core --attest exits 3 (attestation unimplemented).
+func TestCoreAttestStillRefused(t *testing.T) {
+	tree := copyTree(t, "tree-core")
+	code, _, stderr := run(t,
+		"--path", tree,
+		"--key", key(t, "ec-leaf.key"),
+		"--cert", key(t, "ec-core-leaf.crt"),
+		"--core",
+		"--attest",
+	)
+	if code != 3 {
+		t.Errorf("exit = %d, want 3", code)
 	}
 	if stderr == "" {
-		t.Error("--core should explain it is not implemented")
+		t.Error("--attest should explain it is not implemented")
 	}
 }
 

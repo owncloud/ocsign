@@ -57,6 +57,28 @@ gen_set() {
 gen_set ec -algorithm EC -pkeyopt ec_paramgen_curve:P-384
 gen_set rsa -algorithm RSA -pkeyopt rsa_keygen_bits:4096
 
+# Core-identity leaf certs (CN=core) for --core signing tests. These reuse the
+# existing leaf KEYS and intermediates, so no new private keys are introduced;
+# ${p}-leaf.key pairs with both ${p}-leaf.crt (CN=example-app) and
+# ${p}-core-leaf.crt (CN=core).
+# $1 = prefix (ec|rsa)
+gen_core_leaf() {
+	local p="$1"
+	openssl req -new -key "${p}-leaf.key" \
+		-subj "/CN=core" \
+		-out "${p}-core.csr"
+	openssl x509 -req -in "${p}-core.csr" \
+		-CA "${p}-intermediate.crt" -CAkey "${p}-intermediate.key" \
+		-CAcreateserial \
+		-sha384 -days 825 \
+		-extfile <(leaf_ext) \
+		-out "${p}-core-leaf.crt"
+	rm -f "${p}-core.csr" "${p}-intermediate.srl"
+}
+
+gen_core_leaf ec
+gen_core_leaf rsa
+
 # Also emit the EC leaf key in SEC1 form (-----BEGIN EC PRIVATE KEY-----) so the
 # loader's SEC1 path (spec §9) is exercised against a real OpenSSL artifact. The
 # PKCS#8 ec-leaf.key and this SEC1 ec-leaf.sec1.key hold the same private key.

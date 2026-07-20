@@ -1,0 +1,4 @@
+# ocsign core test baseline
+Options -Indexes
+#### DO NOT CHANGE ANYTHING ABOVE THIS LINE ####
+ErrorDocument 404 /core/templates/404.php
