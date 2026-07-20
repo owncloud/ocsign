@@ -91,7 +91,7 @@ OS/arch targets, produces checksummed archives (`SHA256SUMS`), and publishes a
 GitHub Release. To reproduce the artifacts locally:
 
 ```sh
-scripts/build-release.sh v0.1.0 dist
+scripts/build-release.sh v0.2.0 dist
 ```
 
 ## License
