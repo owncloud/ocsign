@@ -15,6 +15,8 @@ import "sort"
 // normalization, matching the legacy verifier byte-for-byte.
 type Mode int
 
+// Build modes: ModeApp signs a third-party app tree; ModeCore signs the core
+// server root with the §3.6 special cases.
 const (
 	ModeApp  Mode = iota // appinfo/signature.json + OS-cruft exclusions (§3.2)
 	ModeCore             // core exclusions + root .htaccess normalization (§3.6)
