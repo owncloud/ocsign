@@ -1,7 +1,10 @@
 // Package signature builds the signature.json output envelope (schema v2, §5).
 package signature
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // Envelope is the schema-v2 signature.json document.
 //
@@ -35,6 +38,12 @@ type certificates struct {
 
 // Marshal renders the envelope as signature.json bytes. The emitted "hashes"
 // value is byte-identical to Hashes (M).
+//
+// HTML-escaping is disabled: encoding/json escapes '<', '>', and '&' to
+// </>/& by default, even inside a json.RawMessage. That would
+// rewrite the canonical bytes M that serialize.go deliberately emits verbatim,
+// so the written "hashes" bytes would no longer match the signed bytes and the
+// verifier would reject any signed path containing those characters (issue #19).
 func (e Envelope) Marshal() ([]byte, error) {
 	chain := e.Chain
 	if chain == nil {
@@ -42,7 +51,10 @@ func (e Envelope) Marshal() ([]byte, error) {
 		// (the field is always present in schema v2, §5).
 		chain = []string{}
 	}
-	return json.Marshal(wire{
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(wire{
 		V:         2,
 		Alg:       e.Alg,
 		Hashes:    json.RawMessage(e.Hashes),
@@ -51,5 +63,10 @@ func (e Envelope) Marshal() ([]byte, error) {
 			Leaf:  e.Leaf,
 			Chain: chain,
 		},
-	})
+	}); err != nil {
+		return nil, err
+	}
+	// Encoder.Encode appends a trailing newline; json.Marshal does not, so trim
+	// it to keep the output byte-identical to the previous behavior.
+	return bytes.TrimRight(buf.Bytes(), "\n"), nil
 }
