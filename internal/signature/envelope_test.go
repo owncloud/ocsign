@@ -42,6 +42,45 @@ func TestHashesBytesEqualM(t *testing.T) {
 	}
 }
 
+// TestHashesBytesEqualMWithHTMLChars is the critical write rule (spec §5) for
+// path keys containing '&', '<', '>'. encoding/json HTML-escapes these to
+// &/</> by default — even inside a json.RawMessage — which would
+// make the written "hashes" bytes diverge from the signed canonical bytes M and
+// break verification (issue #19). The emitted bytes must contain the literal
+// characters, byte-identical to M.
+func TestHashesBytesEqualMWithHTMLChars(t *testing.T) {
+	m := []byte(`{"a & b <c>.txt":"deadbeef"}`)
+	env := signature.Envelope{
+		Alg:       "ecdsa-p384-sha384",
+		Hashes:    m,
+		Signature: "c2ln",
+		Leaf:      leafPEM,
+		Chain:     chainPEM,
+	}
+
+	out, err := env.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	marker := []byte(`"hashes":`)
+	i := bytes.Index(out, marker)
+	if i < 0 {
+		t.Fatalf("no hashes field in output:\n%s", out)
+	}
+	rest := out[i+len(marker):]
+	if !bytes.HasPrefix(rest, m) {
+		t.Fatalf("hashes value is not the verbatim canonical bytes M\n got: %s\nwant prefix: %s", rest, m)
+	}
+	// Belt and suspenders: the JSON \u-escaped forms that encoding/json emits by
+	// default for & < > must not appear.
+	for _, esc := range []string{`\u0026`, `\u003c`, `\u003e`} {
+		if bytes.Contains(out, []byte(esc)) {
+			t.Errorf("output contains escaped %s; hashes bytes were re-escaped:\n%s", esc, out)
+		}
+	}
+}
+
 // TestEnvelopeSchema confirms the schema-v2 shape and field names (spec §5).
 func TestEnvelopeSchema(t *testing.T) {
 	env := signature.Envelope{

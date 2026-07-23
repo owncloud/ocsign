@@ -128,6 +128,62 @@ func TestSignAndVerifyCoreWithOpenSSL(t *testing.T) {
 	}
 }
 
+// TestSignAndVerifyHTMLCharsWithOpenSSL is the end-to-end regression guard for
+// issue #19: a signed path containing '&', '<', '>' must still verify. Before
+// the fix, Marshal HTML-escaped those bytes in the written "hashes" value
+// (&/</>), so the on-disk bytes diverged from the signed canonical
+// bytes M and OpenSSL verify — like ownCloud core's G2 verifier — rejected it.
+func TestSignAndVerifyHTMLCharsWithOpenSSL(t *testing.T) {
+	openssl, err := exec.LookPath("openssl")
+	if err != nil {
+		t.Skip("openssl CLI not available; skipping sign+verify round trip")
+	}
+
+	tree := t.TempDir()
+	writeTreeFile(t, tree, "appinfo/info.xml", "<info><id>example-app</id></info>")
+	// A filename with every HTML-escapable character encoding/json touches.
+	writeTreeFile(t, tree, "js/a & b <c>.js", "console.log('hi');")
+
+	code, _, stderr := run(t,
+		"--path", tree,
+		"--key", key(t, "ec-leaf.key"),
+		"--cert", key(t, "ec-leaf.crt"),
+	)
+	if code != 0 {
+		t.Fatalf("sign exit = %d, want 0; stderr: %s", code, stderr)
+	}
+
+	sigPath := filepath.Join(tree, "appinfo", "signature.json")
+	raw, err := os.ReadFile(sigPath)
+	if err != nil {
+		t.Fatalf("read signature.json: %v", err)
+	}
+	// The written bytes must carry the literal path: the \u-escaped forms that
+	// encoding/json emits by default for & < > must not appear.
+	for _, esc := range []string{`\u0026`, `\u003c`, `\u003e`} {
+		if bytes.Contains(raw, []byte(esc)) {
+			t.Fatalf("signature.json contains escaped %s; hashes bytes were re-escaped:\n%s", esc, raw)
+		}
+	}
+
+	env := readEnvelope(t, sigPath)
+	assertManifestMatches(t, tree, manifest.ModeApp, env.Hashes)
+	verifyWithOpenSSL(t, openssl, env, false)
+}
+
+// writeTreeFile writes rel (forward-slash relative path) under root, creating
+// parent dirs, so a test tree can be assembled in a temp dir.
+func writeTreeFile(t *testing.T, root, rel, content string) {
+	t.Helper()
+	full := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(full, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", rel, err)
+	}
+}
+
 // readEnvelope reads and unmarshals a signature.json file.
 func readEnvelope(t *testing.T, path string) envelope {
 	t.Helper()
