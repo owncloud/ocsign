@@ -129,10 +129,15 @@ func TestSignAndVerifyCoreWithOpenSSL(t *testing.T) {
 }
 
 // TestSignAndVerifyHTMLCharsWithOpenSSL is the end-to-end regression guard for
-// issue #19: a signed path containing '&', '<', '>' must still verify. Before
-// the fix, Marshal HTML-escaped those bytes in the written "hashes" value
-// (&/</>), so the on-disk bytes diverged from the signed canonical
-// bytes M and OpenSSL verify — like ownCloud core's G2 verifier — rejected it.
+// issue #19: a signed path containing '&' must still verify. Before the fix,
+// Marshal HTML-escaped '&' to & in the written "hashes" value, so the
+// on-disk bytes diverged from the signed canonical bytes M and OpenSSL verify —
+// like ownCloud core's G2 verifier — rejected it.
+//
+// Only '&' is exercised on the filesystem here: '<' and '>' (the other two
+// characters encoding/json escapes) are reserved and cannot appear in Windows
+// filenames, and they are already covered filesystem-free by
+// signature.TestHashesBytesEqualMWithHTMLChars.
 func TestSignAndVerifyHTMLCharsWithOpenSSL(t *testing.T) {
 	openssl, err := exec.LookPath("openssl")
 	if err != nil {
@@ -141,8 +146,9 @@ func TestSignAndVerifyHTMLCharsWithOpenSSL(t *testing.T) {
 
 	tree := t.TempDir()
 	writeTreeFile(t, tree, "appinfo/info.xml", "<info><id>example-app</id></info>")
-	// A filename with every HTML-escapable character encoding/json touches.
-	writeTreeFile(t, tree, "js/a & b <c>.js", "console.log('hi');")
+	// '&' is HTML-escaped by encoding/json but is a valid filename byte on every
+	// platform (unlike '<' and '>').
+	writeTreeFile(t, tree, "js/a & b.js", "console.log('hi');")
 
 	code, _, stderr := run(t,
 		"--path", tree,
@@ -158,12 +164,10 @@ func TestSignAndVerifyHTMLCharsWithOpenSSL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read signature.json: %v", err)
 	}
-	// The written bytes must carry the literal path: the \u-escaped forms that
-	// encoding/json emits by default for & < > must not appear.
-	for _, esc := range []string{`\u0026`, `\u003c`, `\u003e`} {
-		if bytes.Contains(raw, []byte(esc)) {
-			t.Fatalf("signature.json contains escaped %s; hashes bytes were re-escaped:\n%s", esc, raw)
-		}
+	// The written bytes must carry the literal '&': the \u-escaped form that
+	// encoding/json emits by default must not appear.
+	if bytes.Contains(raw, []byte(`\u0026`)) {
+		t.Fatalf("signature.json contains escaped &; hashes bytes were re-escaped:\n%s", raw)
 	}
 
 	env := readEnvelope(t, sigPath)
